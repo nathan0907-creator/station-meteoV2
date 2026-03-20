@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Station Météo V6</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 0;
+        }
+        
+        .header-right {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .bell-icon {
+            position: relative;
+            cursor: pointer;
+            font-size: 2em;
+            transition: transform 0.3s ease;
+        }
+        
+        .bell-icon:hover {
+            transform: scale(1.1) rotate(10deg);
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -10px;
+            background: #ff4444;
+            color: white;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            font-weight: bold;
+            animation: pulse 1s infinite;
+            display: none;
+        }
+        
+        .notification-badge.active {
+            display: flex;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        
+        .notifications-panel {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            width: 350px;
+            max-height: 500px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 1000;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .notifications-panel.active {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .notifications-header {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            background: #f5f5f5;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .notification-item {
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            border-left: 4px solid #ff6b6b;
+        }
+        
+        .notification-item.warning {
+            border-left-color: #ffa500;
+            background-color: #fff8e1;
+        }
+        
+        .notification-item.success {
+            border-left-color: #4caf50;
+            background-color: #e8f5e9;
+        }
+        
+        .notification-item.danger {
+            border-left-color: #ff4444;
+            background-color: #ffebee;
+        }
+        
+        .notification-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .notification-time {
+            font-size: 0.85em;
+            color: #999;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .card-title {
+            font-size: 0.9em;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        
+        .card-value {
+            font-size: 3em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .status {
+            font-size: 0.95em;
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .status-ok {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .status-warning {
+            background-color: #fff3e0;
+            color: #e65100;
+        }
+        
+        .status-danger {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        
+        .icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        
+        .charts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .chart-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .history {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background-color: #667eea;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .ai-button {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-size: 2.2em;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease;
+            z-index: 999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .ai-button:hover {
+            transform: scale(1.15) rotate(15deg);
+        }
+        
+        .ai-panel {
+            position: fixed;
+            bottom: 110px;
+            left: 30px;
+            width: 380px;
+            max-height: 550px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 999;
+            display: none;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+        
+        .ai-panel.active {
+            display: block;
+        }
+        
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .ai-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            font-weight: bold;
+            font-size: 1.2em;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+        }
+        
+        .ai-close {
+            cursor: pointer;
+            font-size: 1.5em;
+            background: none;
+            border: none;
+            color: white;
+        }
+        
+        .ai-content {
+            padding: 20px;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .ai-advice {
+            background-color: #f0f4ff;
+            padding: 15px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 15px;
+            border-radius: 8px;
+        }
+        
+        .ai-advice-title {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .refresh-time {
+            text-align: center;
+            color: white;
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-top: 20px;
+        }
+        
+        .time {
+            font-size: 0.9em;
+            color: #999;
+            margin-top: 15px;
+            text-align: center;
+        }
+        
+        footer {
+            text-align: center;
+            color: white;
+            margin-top: 30px;
+            padding: 20px;
+            opacity: 0.8;
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .ai-panel {
+                width: 300px;
+                left: 10px;
+            }
+            
+            .notifications-panel {
+                width: 300px;
+                right: 10px;
+            }
+            
+            .ai-button {
+                width: 60px;
+                height: 60px;
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div>
+                <h1>🌡️ Station Météo V6</h1>
+                <p style="color: rgba(255,255,255,0.8);">Monitoring temps réel - by Nathan</p>
+            </div>
+            <div class="header-right">
+                <div class="bell-icon" onclick="toggleNotifications()">
+                    🔔
+                    <div class="notification-badge" id="notificationBadge">0</div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Panel Notifications -->
+        <div class="notifications-panel" id="notificationsPanel">
+            <div class="notifications-header">
+                <span>📬 Notifications</span>
+                <button onclick="toggleNotifications()" style="background: none; border: none; cursor: pointer; font-size: 1.2em;">✕</button>
+            </div>
+            <div id="notificationsList"></div>
+        </div>
+        
+        <div class="dashboard">
+            <div class="card">
+                <div class="icon">🌡️</div>
+                <div class="card-title">Température</div>
+                <div class="card-value" id="temp">--</div>
+                <div class="card-unit">°C</div>
+                <div class="time" id="tempTime"></div>
+            </div>
+            
+            <div class="card">
+                <div class="icon">💧</div>
+                <div class="card-title">Humidité</div>
+                <div class="card-value" id="humidity">--</div>
+                <div class="card-unit">%</div>
+                <div id="humidityStatus" class="status status-ok"></div>
+                <div class="time" id="humidityTime"></div>
+            </div>
+            
+            <div class="card">
+                <div class="icon">💨</div>
+                <div class="card-title">Gaz Détecté</div>
+                <div class="card-value" id="gas">--</div>
+                <div class="card-unit">ppm</div>
+                <div id="gasStatus" class="status status-ok"></div>
+                <div class="time" id="gasTime"></div>
+            </div>
+        </div>
+        
+        <div class="charts">
+            <div class="chart-card">
+                <div class="chart-title">📈 Température (24h)</div>
+                <canvas id="tempChart"></canvas>
+            </div>
+            
+            <div class="chart-card">
+                <div class="chart-title">💧 Humidité (24h)</div>
+                <canvas id="humidityChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="history">
+            <h2 style="margin-bottom: 20px; color: #333;">📋 Historique des Mesures</h2>
+            <table id="dataTable">
+                <thead>
+                    <tr>
+                        <th>Heure</th>
+                        <th>Température</th>
+                        <th>Humidité</th>
+                        <th>État Gaz</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <tr><td colspan="4" style="text-align: center;">Chargement des données...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Bouton IA -->
+        <button class="ai-button" onclick="toggleAIPanel()" title="Assistant IA">🤖</button>
+        
+        <!-- Panel IA -->
+        <div class="ai-panel" id="aiPanel">
+            <div class="ai-header">
+                🤖 Assistant IA
+                <button class="ai-close" onclick="toggleAIPanel()">✕</button>
+            </div>
+            <div class="ai-content">
+                <div id="aiAdviceContainer">
+                    <p style="color: #999; text-align: center;">Cliquez sur "Obtenir des conseils" pour analyser vos données</p>
+                </div>
+                <button onclick="generateAdvice()" style="
+                    width: 100%;
+                    padding: 12px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: bold;
+                    margin-top: 10px;
+                    font-size: 1em;
+                ">
+                    💡 Obtenir des conseils
+                </button>
+            </div>
+        </div>
+        
+        <div class="refresh-time">
+            ⏱️ Actualisation automatique en cours...
+            <div id="nextRefresh" style="font-size: 0.85em; margin-top: 5px;"></div>
+        </div>
+        
+        <footer>
+            <p>Station Météo V6 © 2024 | Données actualisées automatiquement toutes les 30 secondes</p>
+        </footer>
+    </div>
+    
+    <script>
+        let tempChart, humidityChart;
+        let temperaturesData = [];
+        let humiditiesData = [];
+        let labelsData = [];
+        let notifications = [];
+        let currentData = null;
+        let lastNotificationTime = {};
+        
+        // Données exemple (simulées pour preview)
+        const MOCK_DATA = [
+            { temp: 22.5, humidity: 55, gas: 'BAS', heure: 14, minute: 0 },
+            { temp: 23.1, humidity: 58, gas: 'BAS', heure: 14, minute: 5 },
+            { temp: 23.5, humidity: 60, gas: 'BAS', heure: 14, minute: 10 },
+            { temp: 23.8, humidity: 62, gas: 'BAS', heure: 14, minute: 15 },
+            { temp: 24.2, humidity: 65, gas: 'BAS', heure: 14, minute: 20 },
+            { temp: 24.5, humidity: 67, gas: 'MOYEN', heure: 14, minute: 25 },
+            { temp: 24.8, humidity: 68, gas: 'MOYEN', heure: 14, minute: 30 },
+            { temp: 25.1, humidity: 70, gas: 'MOYEN', heure: 14, minute: 35 },
+        ];
+        
+        // Initialiser
+        window.addEventListener('load', function() {
+            initCharts();
+            fetchData();
+            
+            // Actualiser toutes les 30 secondes
+            setInterval(fetchData, 30000);
+            updateRefreshTimer();
+        });
+        
+        // Initialiser graphiques
+        function initCharts() {
+            const tempCtx = document.getElementById('tempChart').getContext('2d');
+            tempChart = new Chart(tempCtx, {
+                type: 'line',
+                data: {
+                    labels: labelsData,
+                    datasets: [{
+                        label: 'Température (°C)',
+                        data: temperaturesData,
+                        borderColor: '#ff6b6b',
+                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#ff6b6b'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { display: true, position: 'top' } },
+                    scales: { y: { beginAtZero: false } }
+                }
+            });
+            
+            const humidityCtx = document.getElementById('humidityChart').getContext('2d');
+            humidityChart = new Chart(humidityCtx, {
+                type: 'line',
+                data: {
+                    labels: labelsData,
+                    datasets: [{
+                        label: 'Humidité (%)',
+                        data: humiditiesData,
+                        borderColor: '#4ecdc4',
+                        backgroundColor: 'rgba(78, 205, 196, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#4ecdc4'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { display: true, position: 'top' } },
+                    scales: { y: { beginAtZero: true, max: 100 } }
+                }
+            });
+        }
+        
+        // Récupérer données (avec fallback mock)
+        async function fetchData() {
+            try {
+                const response = await fetch('/data.json');
+                const fileData = await response.json();
+                const data = fileData.measurements || MOCK_DATA;
+                
+                if (data.length > 0) {
+                    currentData = data[data.length - 1];
+                } else {
+                    currentData = MOCK_DATA[MOCK_DATA.length - 1];
+                }
+                
+                updateUI(currentData, data);
+                checkNotifications(currentData);
+                
+            } catch (error) {
+                console.log('Données mock utilisées');
+                currentData = MOCK_DATA[MOCK_DATA.length - 1];
+                updateUI(currentData, MOCK_DATA);
+                checkNotifications(currentData);
+            }
+        }
+        
+        // Mettre à jour UI
+        function updateUI(data, allData) {
+            document.getElementById('temp').textContent = data.temp.toFixed(1);
+            document.getElementById('humidity').textContent = Math.round(data.humidity);
+            document.getElementById('gas').textContent = data.gas;
+            
+            updateHumidityStatus(data.humidity);
+            updateGasStatus(data.gas);
+            
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('fr-FR');
+            document.getElementById('tempTime').textContent = 'Mise à jour: ' + timeStr;
+            document.getElementById('humidityTime').textContent = 'Mise à jour: ' + timeStr;
+            document.getElementById('gasTime').textContent = 'Mise à jour: ' + timeStr;
+            
+            updateHistory(allData);
+            updateCharts(allData);
+        }
+        
+        // Vérifier notifications
+        function checkNotifications(data) {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('fr-FR');
+            
+            // Humidité trop basse
+            if (data.humidity < 40) {
+                if (!lastNotificationTime['humidityLow']) {
+                    addNotification('⚠️ Humidité BASSE', `${Math.round(data.humidity)}% - Augmentez l\'humidité!`, 'warning', timeStr);
+                    lastNotificationTime['humidityLow'] = true;
+                }
+            } else {
+                lastNotificationTime['humidityLow'] = false;
+            }
+            
+            // Humidité trop élevée
+            if (data.humidity > 75) {
+                if (!lastNotificationTime['humidityHigh']) {
+                    addNotification('⚠️ Humidité ÉLEVÉE', `${Math.round(data.humidity)}% - Ventillez bien!`, 'warning', timeStr);
+                    lastNotificationTime['humidityHigh'] = true;
+                }
+            } else {
+                lastNotificationTime['humidityHigh'] = false;
+            }
+            
+            // Gaz dangereux
+            if (data.gas === 'ELEV' || data.gas === 'FEU!') {
+                if (!lastNotificationTime['gasDanger']) {
+                    addNotification('🚨 ALERTE GAZ', `Niveau: ${data.gas} - Ventillez immédiatement!`, 'danger', timeStr);
+                    lastNotificationTime['gasDanger'] = true;
+                }
+            } else {
+                lastNotificationTime['gasDanger'] = false;
+            }
+        }
+        
+        // Ajouter notification
+        function addNotification(title, message, type, time) {
+            notifications.unshift({ title, message, type, time });
+            if (notifications.length > 15) notifications.pop();
+            updateNotificationUI();
+        }
+        
+        // Mettre à jour UI notifications
+        function updateNotificationUI() {
+            const badge = document.getElementById('notificationBadge');
+            badge.textContent = notifications.length;
+            badge.classList.toggle('active', notifications.length > 0);
+            
+            const list = document.getElementById('notificationsList');
+            list.innerHTML = notifications.map(n => `
+                <div class="notification-item ${n.type}">
+                    <div class="notification-title">${n.title}</div>
+                    <div>${n.message}</div>
+                    <div class="notification-time">${n.time}</div>
+                </div>
+            `).join('');
+        }
+        
+        // Mettre à jour statut humidité
+        function updateHumidityStatus(humidity) {
+            const el = document.getElementById('humidityStatus');
+            if (humidity < 40) {
+                el.textContent = '🏜️ SEC - Augmenter humidité';
+                el.className = 'status status-warning';
+            } else if (humidity < 60) {
+                el.textContent = '✅ OK - Conditions idéales';
+                el.className = 'status status-ok';
+            } else if (humidity < 75) {
+                el.textContent = '⚠️ MOYEN - Ventiler un peu';
+                el.className = 'status status-warning';
+            } else {
+                el.textContent = '🚨 ÉLEVÉ - Ventiler beaucoup';
+                el.className = 'status status-danger';
+            }
+        }
+        
+        // Mettre à jour statut gaz
+        function updateGasStatus(gas) {
+            const el = document.getElementById('gasStatus');
+            if (gas === 'BAS') {
+                el.textContent = '✅ BAS - Air pur';
+                el.className = 'status status-ok';
+            } else if (gas === 'MOYEN') {
+                el.textContent = '⚠️ MOYEN - Attention';
+                el.className = 'status status-warning';
+            } else if (gas === 'ELEV') {
+                el.textContent = '🚨 ÉLEVÉ - Ventiler!';
+                el.className = 'status status-danger';
+            } else if (gas === 'FEU!') {
+                el.textContent = '🔴 DANGER FEU - ÉVACUER!';
+                el.className = 'status status-danger';
+            }
+        }
+        
+        // Mettre à jour historique
+        function updateHistory(data) {
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+            
+            data.slice(-20).reverse().forEach(item => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${item.heure}:${String(item.minute).padStart(2, '0')}</td>
+                    <td>${item.temp.toFixed(1)}°C</td>
+                    <td>${Math.round(item.humidity)}%</td>
+                    <td>${item.gas}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+        
+        // Mettre à jour graphiques
+        function updateCharts(data) {
+            temperaturesData = data.map(d => d.temp);
+            humiditiesData = data.map(d => d.humidity);
+            labelsData = data.map(d => `${d.heure}:${String(d.minute).padStart(2, '0')}`);
+            
+            if (tempChart) {
+                tempChart.data.labels = labelsData;
+                tempChart.data.datasets[0].data = temperaturesData;
+                tempChart.update();
+            }
+            
+            if (humidityChart) {
+                humidityChart.data.labels = labelsData;
+                humidityChart.data.datasets[0].data = humiditiesData;
+                humidityChart.update();
+            }
+        }
+        
+        // Basculer panel notifications
+        function toggleNotifications() {
+            document.getElementById('notificationsPanel').classList.toggle('active');
+        }
+        
+        // Basculer panel IA
+        function toggleAIPanel() {
+            document.getElementById('aiPanel').classList.toggle('active');
+        }
+        
+        // Générer conseils IA
+        function generateAdvice() {
+            if (!currentData) return;
+            
+            const advices = [];
+            
+            // Conseils température
+            if (currentData.temp < 15) {
+                advices.push({
+                    title: '🌡️ Température Basse',
+                    text: 'La température est basse (< 15°C). Améliez l\'isolation ou augmentez le chauffage pour plus de confort.'
+                });
+            } else if (currentData.temp > 30) {
+                advices.push({
+                    title: '🌡️ Température Élevée',
+                    text: 'La température est élevée (> 30°C). Améliez la ventilation ou utilisez la climatisation.'
+                });
+            } else {
+                advices.push({
+                    title: '✅ Température OK',
+                    text: `La température est confortable (${currentData.temp.toFixed(1)}°C). Maintenez ces conditions.`
+                });
+            }
+            
+            // Conseils humidité
+            if (currentData.humidity < 30) {
+                advices.push({
+                    title: '💧 Humidité Très Basse',
+                    text: 'L\'air est très sec (< 30%). Cela peut causer des problèmes respiratoires. Utilisez un humidificateur.'
+                });
+            } else if (currentData.humidity < 40) {
+                advices.push({
+                    title: '💧 Humidité Basse',
+                    text: 'L\'humidité est basse (< 40%). Plantez des plantes ou utilisez un humidificateur pour l\'augmenter.'
+                });
+            } else if (currentData.humidity > 75) {
+                advices.push({
+                    title: '💧 Humidité Élevée',
+                    text: 'L\'air est très humide (> 75%). Risque de moisissure. Ventillez régulièrement et utilisez un déshumidificateur.'
+                });
+            } else if (currentData.humidity > 60) {
+                advices.push({
+                    title: '💧 Humidité Modérée',
+                    text: `L\'humidité est acceptable (${Math.round(currentData.humidity)}%). Ventillez régulièrement pour maintenir cet équilibre.`
+                });
+            } else {
+                advices.push({
+                    title: '✅ Humidité Idéale',
+                    text: `L\'humidité est parfaite (${Math.round(currentData.humidity)}%). Conditions optimales pour le confort et la santé.`
+                });
+            }
+            
+            // Conseils gaz
+            if (currentData.gas === 'FEU!') {
+                advices.push({
+                    title: '🔴 DANGER CRITIQUE',
+                    text: 'DANGER FEU! Ventillez IMMÉDIATEMENT et vérifiez les sources de gaz. Appelez les secours si nécessaire!'
+                });
+            } else if (currentData.gas === 'ELEV') {
+                advices.push({
+                    title: '💨 Alerte Gaz',
+                    text: 'Niveau de gaz élevé! Ventillez immédiatement et cherchez la source du problème.'
+                });
+            } else if (currentData.gas === 'MOYEN') {
+                advices.push({
+                    title: '💨 Gaz Modéré',
+                    text: 'Améliorez la ventilation pour réduire la concentration de gaz.'
+                });
+            } else {
+                advices.push({
+                    title: '✅ Air Pur',
+                    text: 'La qualité de l\'air est excellente. Maintenez une bonne ventilation.'
+                });
+            }
+            
+            const html = advices.map(a => `
+                <div class="ai-advice">
+                    <div class="ai-advice-title">${a.title}</div>
+                    ${a.text}
+                </div>
+            `).join('');
+            
+            document.getElementById('aiAdviceContainer').innerHTML = html;
+        }
+        
+        // Mettre à jour timer actualisation
+        function updateRefreshTimer() {
+            const updateTimer = () => {
+                const now = new Date();
+                const nextRefresh = new Date(now.getTime() + 30000);
+                const diff = Math.ceil((nextRefresh - now) / 1000);
+                document.getElementById('nextRefresh').textContent = `Prochaine actualisation: ${diff}s`;
+            };
+            
+            updateTimer();
+            setInterval(updateTimer, 1000);
+        }
+    </script>
+</body>
+</html>
